@@ -1,46 +1,114 @@
 <template>
-    <div class="container">
-        <p>이미지를 아스키 아트로 바꿔줘요!</p>
-        <input type="file" @change="handleChange" />
-        <img :src="config.src" @click="printImg" />
-        <pre v-html="config.pre"></pre>
+    <div class="w-[100vw] h-[100vh]">
+        <div class="grid place-items-center">
+            <div
+                class="drag-zone"
+                @click="passClick"
+                @dragover="handleDragOver"
+                @drop="handleDrop"
+            >
+                Drag &amp; Drop
+            </div>
+        </div>
+        <input
+            id="input"
+            class="hidden"
+            type="file"
+            accept="image/*"
+            ref="inputFileRef"
+            @change="handleChange"
+        />
+        <div class="flex items-center flex-col gap-10 cursor-pointer">
+            <img class="max-w-[150px]" :src="config.src" @click="printAscii" />
+            <pre v-html="config.pre"></pre>
+        </div>
     </div>
 </template>
 
 <script setup>
 import { reactive, ref } from "vue";
-import imgToAscii from "./imgToAscii";
+import imgToAscii from "./utils/imgToAscii";
+import confetti from "canvas-confetti";
 
 const config = reactive({
     src: "",
-    container: ref(),
     pre: "",
+    changed: false,
 });
 
-function handleChange(event) {
-    const { target } = event;
+const inputFileRef = ref();
 
-    const reader = new FileReader();
-
-    reader.onload = function () {
-        config.src = reader.result;
-    };
-
-    reader.readAsDataURL(target.files[0]);
+function passClick() {
+    inputFileRef.value.click();
 }
 
-async function printImg() {
-    const art = new imgToAscii(config.src);
+// 미리보기 이미지 그려주는 곳
+function printImg(file) {
+    const reader = new FileReader();
 
-    config.pre = await art.displayColor(null, true);
-    console.log(config.pre);
+    reader.readAsDataURL(file);
 
-    // config.pre = await art.display();
+    reader.onload = function (event) {
+        const img = new Image();
+        img.src = event.target.result;
+
+        img.onload = function () {
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
+            const maxImageSize = 200;
+
+            let scale = 1;
+            if (img.width > maxImageSize || img.height > maxImageSize) {
+                scale = Math.min(
+                    maxImageSize / img.width,
+                    maxImageSize / img.height,
+                );
+            }
+
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            config.src = canvas.toDataURL();
+
+            config.changed = false;
+            config.pre = "";
+        };
+    };
+}
+
+function handleDragOver(event) {
+    event.preventDefault();
+}
+
+function handleDrop(event) {
+    event.preventDefault();
+
+    printImg(event.dataTransfer.files[0]);
+}
+
+function handleChange(event) {
+    printImg(event.target.files[0]);
+}
+
+async function printAscii() {
+    if (!config.changed) {
+        const art = new imgToAscii(config.src);
+
+        config.pre = await art.displayColor(null, true);
+
+        config.changed = true;
+    }
+
+    confetti({
+        particleCount: 150,
+        spread: 60,
+        origin: {
+            x: 0.5,
+            y: 0.7,
+        },
+    });
 }
 </script>
 
-<style lang="postcss">
-.container {
-    text-align: center;
-}
-</style>
+<style lang="postcss"></style>
