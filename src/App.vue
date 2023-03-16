@@ -19,7 +19,12 @@
             @change="handleChange"
         />
         <div class="flex items-center flex-col gap-10 cursor-pointer">
-            <img class="max-w-[150px]" :src="config.src" @click="printAscii" />
+            <div class="relative max-w-[150px]">
+                <img class="w-full" :src="config.src" @click="printAscii" />
+                <span v-if="config.src" class="absolute top-[35%] right-[-100%]"
+                    >👈 Click me!</span
+                >
+            </div>
             <pre v-html="config.pre"></pre>
         </div>
     </div>
